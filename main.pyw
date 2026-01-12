@@ -1,66 +1,83 @@
 import os
+import sys
 import threading
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import ttk, filedialog
 import yt_dlp
 
-APP_DIR = os.getcwd()
-FFMPEG_DIR = os.path.join(APP_DIR, "ffmpeg_bin")
-FFMPEG_EXE = os.path.join(FFMPEG_DIR, "ffmpeg.exe")
+# -------------------- PATH HANDLING (PY / EXE SAFE) --------------------
+
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS  # PyInstaller temp folder
+    except AttributeError:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+FFMPEG_EXE = resource_path("ffmpeg_bin/ffmpeg.exe")
 
 def ffmpeg_exists():
     return os.path.isfile(FFMPEG_EXE)
+
+# -------------------- YT-DLP HOOKS --------------------
 
 def progress_hook(d):
     if d["status"] == "downloading":
         total = d.get("total_bytes") or d.get("total_bytes_estimate")
         downloaded = d.get("downloaded_bytes", 0)
+
         if total:
             percent = downloaded * 100 / total
             set_progress(percent)
             set_status(f"Downloading {percent:.1f}%")
             print(f"\rDownloading {percent:.1f}%", end="", flush=True)
+
     elif d["status"] == "finished":
         set_status("Processing")
         print("\nProcessing")
 
-def get_format(q, container):
-    base = {
+# -------------------- FORMAT SELECTION --------------------
+
+def get_format(quality, container):
+    quality_map = {
         "Best available": "",
         "1080p": "[height<=1080]",
         "720p": "[height<=720]",
-        "480p": "[height<=480]"
-    }[q]
+        "480p": "[height<=480]",
+    }
+
+    q = quality_map[quality]
 
     if container == "webm":
-        return f"bv*{base}[ext=webm]+ba[ext=webm]/b{base}[ext=webm]"
+        return f"bv*{q}[ext=webm]+ba[ext=webm]/b{q}[ext=webm]"
 
-    return f"bv*{base}[ext=mp4]+ba[ext=m4a]/b{base}[ext=mp4]"
+    # mp4 / mov
+    return f"bv*{q}[ext=mp4]+ba[ext=m4a]/b{q}[ext=mp4]"
+
+# -------------------- DOWNLOAD THREAD --------------------
 
 def download_worker():
-    if not ffmpeg_exists():
-        set_status("FFmpeg not found")
-        messagebox.showerror(
-            "FFmpeg Missing",
-            "ffmpeg.exe was not found.\n\n"
-            "Place ffmpeg.exe inside the ffmpeg_bin folder."
-        )
-        return
-
     try:
+        if not ffmpeg_exists():
+            raise FileNotFoundError(
+                "ffmpeg.exe not found.\n\n"
+                "Place it in:\n"
+                "ffmpeg_bin/ffmpeg.exe"
+            )
+
         container = container_box.get().lower()
 
-        opts = {
+        ydl_opts = {
             "outtmpl": os.path.join(out_dir.get(), "%(title)s.%(ext)s"),
             "format": get_format(quality_box.get(), container),
             "merge_output_format": container,
             "ffmpeg_location": FFMPEG_EXE,
             "progress_hooks": [progress_hook],
             "quiet": False,
-            "no_color": True
+            "no_color": True,
         }
 
-        with yt_dlp.YoutubeDL(opts) as ydl:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url_entry.get()])
 
         set_progress(100)
@@ -77,16 +94,20 @@ def start_download():
     set_progress(0)
     threading.Thread(target=download_worker, daemon=True).start()
 
+# -------------------- UI HELPERS --------------------
+
 def browse():
     path = filedialog.askdirectory()
     if path:
         out_dir.set(path)
 
-def set_progress(v):
-    root.after(0, lambda: (progress_bar.config(value=v), root.update_idletasks()))
+def set_progress(value):
+    root.after(0, lambda: progress_bar.config(value=value))
 
-def set_status(t):
-    root.after(0, lambda: status_label.config(text=t))
+def set_status(text):
+    root.after(0, lambda: status_label.config(text=text))
+
+# -------------------- UI --------------------
 
 root = tk.Tk()
 root.title("YouTube Downloader")
@@ -98,11 +119,11 @@ main.pack(expand=True)
 
 ttk.Label(main, text="YouTube Downloader", font=("Segoe UI", 13, "bold")).pack(pady=(0, 14))
 
-ttk.Label(main, text="YouTube URL").pack(anchor="center")
+ttk.Label(main, text="YouTube URL").pack()
 url_entry = ttk.Entry(main, width=60, justify="center")
 url_entry.pack(pady=(2, 12))
 
-ttk.Label(main, text="Quality").pack(anchor="center")
+ttk.Label(main, text="Quality").pack()
 quality_box = ttk.Combobox(
     main,
     values=["Best available", "1080p", "720p", "480p"],
@@ -113,7 +134,7 @@ quality_box = ttk.Combobox(
 quality_box.set("Best available")
 quality_box.pack(pady=(2, 12))
 
-ttk.Label(main, text="Container").pack(anchor="center")
+ttk.Label(main, text="Container").pack()
 container_box = ttk.Combobox(
     main,
     values=["MP4", "WEBM"],
@@ -124,7 +145,7 @@ container_box = ttk.Combobox(
 container_box.set("MP4")
 container_box.pack(pady=(2, 12))
 
-ttk.Label(main, text="Output Directory").pack(anchor="center")
+ttk.Label(main, text="Output Directory").pack()
 
 dir_frame = ttk.Frame(main)
 dir_frame.pack(pady=(2, 12))
