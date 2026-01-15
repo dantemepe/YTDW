@@ -71,13 +71,16 @@ def download_worker():
             opts = {
                 "outtmpl": os.path.join(output, "%(title)s.%(ext)s"),
                 "format": "bestaudio/best",
-                "postprocessors": [{
-                    "key": "FFmpegExtractAudio",
-                    "preferredcodec": "mp3",
-                    "preferredquality": "192",
-                }],
+                "postprocessors": [
+                    {
+                        "key": "FFmpegExtractAudio",
+                        "preferredcodec": "mp3",
+                        "preferredquality": "192",
+                    }
+                ],
                 "ffmpeg_location": FFMPEG_EXE,
                 "progress_hooks": [progress_hook],
+                "keepvideo": False,
                 "quiet": False,
                 "no_color": True,
             }
@@ -139,7 +142,7 @@ quality_box.pack(pady=(4, 12))
 ttk.Label(main, text="Format").pack()
 container_box = ttk.Combobox(
     main,
-    values=["MP4", "WEBM", "MP3"],
+    values=["MP4", "MOV", "WEBM", "MP3"],
     state="readonly",
     width=57,
     justify="center"
