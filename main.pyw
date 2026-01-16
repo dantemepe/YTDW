@@ -142,7 +142,7 @@ quality_box.pack(pady=(4, 12))
 ttk.Label(main, text="Format").pack()
 container_box = ttk.Combobox(
     main,
-    values=["MP4", "MOV", "WEBM", "MP3"],
+    values=["MP4", "WEBM", "MP3"],
     state="readonly",
     width=57,
     justify="center"
