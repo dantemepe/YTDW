@@ -46,9 +46,14 @@ def get_video_format(quality, container):
 
     if container == "webm":
         return f"bv*{q}[ext=webm]+ba[ext=webm]/b{q}[ext=webm]"
-    if container == "mov":
-        return f"bv*{q}[ext=mp4]+ba[ext=m4a]/b{q}[ext=mp4]"
     return f"bv*{q}[ext=mp4]+ba[ext=m4a]/b{q}[ext=mp4]"
+
+def update_quality_lock(event=None):
+    if container_box.get() == "MP3":
+        quality_box.set("Best available")
+        quality_box.config(state="disabled")
+    else:
+        quality_box.config(state="readonly")
 
 def download_worker():
     if not ffmpeg_exists():
@@ -142,13 +147,14 @@ quality_box.pack(pady=(4, 12))
 ttk.Label(main, text="Format").pack()
 container_box = ttk.Combobox(
     main,
-    values=["MP4", "MOV", "WEBM", "MP3"],
+    values=["MP4", "WEBM", "MP3"],
     state="readonly",
     width=57,
     justify="center"
 )
 container_box.set("MP4")
 container_box.pack(pady=(4, 12))
+container_box.bind("<<ComboboxSelected>>", update_quality_lock)
 
 ttk.Label(main, text="Output Folder").pack()
 
