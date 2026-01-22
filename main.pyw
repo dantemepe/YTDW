@@ -1,3 +1,4 @@
+import ctypes
 import os
 import sys
 import threading
@@ -172,5 +173,7 @@ ttk.Button(main, text="Download", width=20, command=start_download).pack()
 
 status_label = ttk.Label(main, text="")
 status_label.pack(pady=(10, 0))
-
+myappid = 'dante.ytdw.main.v1.0'
+ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+root.iconbitmap(os.path.join(APP_DIR, "YTDWICON.ico"))
 root.mainloop()
