@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import ctypes
 import os
 import sys
@@ -6,6 +7,13 @@ import tkinter as tk
 from tkinter import ttk, filedialog
 import yt_dlp
 
+if sys.platform.startswith("linux"):
+    plat = "linux"
+elif sys.platform == "win32":
+    plat = "windows"
+else:
+    plat = "other"
+
 def app_path():
     if getattr(sys, "frozen", False):
         return sys._MEIPASS
@@ -13,10 +21,33 @@ def app_path():
 
 APP_DIR = app_path()
 FFMPEG_DIR = os.path.join(APP_DIR, "ffmpeg_bin")
-FFMPEG_EXE = os.path.join(FFMPEG_DIR, "ffmpeg.exe")
+
+if plat == "windows":
+    FFMPEG_EXE = os.path.join(FFMPEG_DIR, "ffmpeg.exe")
+else:
+    FFMPEG_EXE = os.path.join(FFMPEG_DIR, "ffmpeg.exe")
 
 def ffmpeg_exists():
     return os.path.isfile(FFMPEG_EXE)
+
+def get_downloads_folder():
+    try:
+        if plat == "windows":
+            import winreg
+            sub_key = r'SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders'
+            downloads_guid = '{374DE290-123F-4565-9164-39C4925E467B}'
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, sub_key) as key:
+                location = winreg.QueryValueEx(key, downloads_guid)[0]
+            return location
+        else:
+            import subprocess
+            path = subprocess.check_output(["xdg-user-dir", "DOWNLOAD"]).decode().strip()
+            if os.path.isdir(path):
+                return path
+    except:
+        pass
+
+    return os.path.join(os.path.expanduser("~"), "Downloads")
 
 def set_status(text):
     root.after(0, lambda: status_label.config(text=text))
@@ -45,8 +76,7 @@ def get_video_format(quality, container):
         "480p": "[height<=480]",
     }[quality]
 
-    if container == "webm":
-        return f"bv*{q}[ext=webm]+ba[ext=webm]/b{q}[ext=webm]"
+
     return f"bv*{q}[ext=mp4]+ba[ext=m4a]/b{q}[ext=mp4]"
 
 def update_quality_lock(event=None):
@@ -58,8 +88,8 @@ def update_quality_lock(event=None):
 
 def download_worker():
     if not ffmpeg_exists():
-        set_status("ffmpeg.exe not found")
-        print("ffmpeg.exe missing")
+        set_status("ffmpeg missing")
+        print("ffmpeg missing")
         return
 
     url = url_entry.get().strip()
@@ -73,9 +103,22 @@ def download_worker():
     set_progress(0)
 
     try:
+        common_opts = {
+            "outtmpl": os.path.join(output, "%(title)s.%(ext)s"),
+            "ffmpeg_location": FFMPEG_EXE,
+            "progress_hooks": [progress_hook],
+            "quiet": False,
+            "no_color": True,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android"]
+                }
+            }
+        }
+
         if container == "mp3":
             opts = {
-                "outtmpl": os.path.join(output, "%(title)s.%(ext)s"),
+                **common_opts,
                 "format": "bestaudio/best",
                 "postprocessors": [
                     {
@@ -84,21 +127,13 @@ def download_worker():
                         "preferredquality": "192",
                     }
                 ],
-                "ffmpeg_location": FFMPEG_EXE,
-                "progress_hooks": [progress_hook],
                 "keepvideo": False,
-                "quiet": False,
-                "no_color": True,
             }
         else:
             opts = {
-                "outtmpl": os.path.join(output, "%(title)s.%(ext)s"),
+                **common_opts,
                 "format": get_video_format(quality_box.get(), container),
                 "merge_output_format": container,
-                "ffmpeg_location": FFMPEG_EXE,
-                "progress_hooks": [progress_hook],
-                "quiet": False,
-                "no_color": True,
             }
 
         with yt_dlp.YoutubeDL(opts) as ydl:
@@ -148,7 +183,7 @@ quality_box.pack(pady=(4, 12))
 ttk.Label(main, text="Format").pack()
 container_box = ttk.Combobox(
     main,
-    values=["MP4", "WEBM", "MP3"],
+    values=["MP4", "MP3"],
     state="readonly",
     width=57,
     justify="center"
@@ -162,7 +197,7 @@ ttk.Label(main, text="Output Folder").pack()
 dir_frame = ttk.Frame(main)
 dir_frame.pack(pady=(4, 12))
 
-out_dir = tk.StringVar(value=os.path.join(os.path.expanduser("~"), "Downloads"))
+out_dir = tk.StringVar(value=get_downloads_folder())
 ttk.Entry(dir_frame, textvariable=out_dir, width=46, justify="center").pack(side="left", padx=(0, 6))
 ttk.Button(dir_frame, text="Browse", command=browse).pack(side="left")
 
@@ -173,7 +208,12 @@ ttk.Button(main, text="Download", width=20, command=start_download).pack()
 
 status_label = ttk.Label(main, text="")
 status_label.pack(pady=(10, 0))
-myappid = 'dante.ytdw.main.v1.0'
-ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-root.iconbitmap(os.path.join(APP_DIR, "YTDWICON.ico"))
+
+if plat == "windows":
+    myappid = 'dante.ytdw.main.v1.0'
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    icon_path = os.path.join(APP_DIR, "YTDWICON.ico")
+    if os.path.exists(icon_path):
+        root.iconbitmap(icon_path)
+
 root.mainloop()
