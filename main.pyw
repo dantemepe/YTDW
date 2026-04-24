@@ -7,6 +7,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog
 import yt_dlp
 
+# Platform detection
 if sys.platform.startswith("linux"):
     plat = "linux"
 elif sys.platform == "win32":
@@ -22,10 +23,7 @@ def app_path():
 APP_DIR = app_path()
 FFMPEG_DIR = os.path.join(APP_DIR, "ffmpeg_bin")
 
-if plat == "windows":
-    FFMPEG_EXE = os.path.join(FFMPEG_DIR, "ffmpeg.exe")
-else:
-    FFMPEG_EXE = os.path.join(FFMPEG_DIR, "ffmpeg.exe")
+FFMPEG_EXE = os.path.join(FFMPEG_DIR, "ffmpeg.exe")
 
 def ffmpeg_exists():
     return os.path.isfile(FFMPEG_EXE)
@@ -68,6 +66,7 @@ def progress_hook(d):
         set_status("Processing")
         print("\nProcessing")
 
+# ✅ FIXED FORMAT LOGIC
 def get_video_format(quality, container):
     q = {
         "Best available": "",
@@ -76,8 +75,10 @@ def get_video_format(quality, container):
         "480p": "[height<=480]",
     }[quality]
 
-
-    return f"bv*{q}[ext=mp4]+ba[ext=m4a]/b{q}[ext=mp4]"
+    if container == "mp4":
+        return f"bv*{q}+ba/b{q}"
+    else:
+        return f"bestvideo{q}+bestaudio/best{q}"
 
 def update_quality_lock(event=None):
     if container_box.get() == "MP3":
@@ -109,11 +110,6 @@ def download_worker():
             "progress_hooks": [progress_hook],
             "quiet": False,
             "no_color": True,
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["android"]
-                }
-            }
         }
 
         if container == "mp3":
@@ -155,6 +151,7 @@ def browse():
     if path:
         out_dir.set(path)
 
+# UI
 root = tk.Tk()
 root.title("YouTube Downloader")
 root.geometry("520x460")
@@ -209,6 +206,7 @@ ttk.Button(main, text="Download", width=20, command=start_download).pack()
 status_label = ttk.Label(main, text="")
 status_label.pack(pady=(10, 0))
 
+# Windows extras
 if plat == "windows":
     myappid = 'dante.ytdw.main.v1.0'
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
