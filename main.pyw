@@ -7,8 +7,8 @@ import tkinter as tk
 from tkinter import ttk, filedialog
 import yt_dlp
 
-# Platform detection
-if sys.platform.startswith("linux"):
+
+if sys.platform.startswith("linux"): # this detects your if you are on a unix based system or on windows
     plat = "linux"
 elif sys.platform == "win32":
     plat = "windows"
@@ -66,7 +66,7 @@ def progress_hook(d):
         set_status("Processing")
         print("\nProcessing")
 
-# ✅ FIXED FORMAT LOGIC
+ #this part defines the lists for quality and format
 def get_video_format(quality, container):
     q = {
         "Best available": "",
@@ -151,7 +151,7 @@ def browse():
     if path:
         out_dir.set(path)
 
-# UI
+ #this part defines the window
 root = tk.Tk()
 root.title("YouTube Downloader")
 root.geometry("520x460")
@@ -206,8 +206,8 @@ ttk.Button(main, text="Download", width=20, command=start_download).pack()
 status_label = ttk.Label(main, text="")
 status_label.pack(pady=(10, 0))
 
-# Windows extras
-if plat == "windows":
+
+if plat == "windows":  #this makes it so that if youre on windows it has a custom icon cuz idrk how to make that happen on linux yet
     myappid = 'dante.ytdw.main.v1.0'
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     icon_path = os.path.join(APP_DIR, "YTDWICON.ico")
