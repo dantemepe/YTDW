@@ -6,27 +6,24 @@ import threading
 import tkinter as tk
 from tkinter import ttk, filedialog
 import yt_dlp
+import shutil
 
 
-if sys.platform.startswith("linux"): # this detects your if you are on a unix based system or on windows
-    plat = "linux"
-elif sys.platform == "win32":
+
+if sys.platform == "win32":
     plat = "windows"
+    FFMPEG_DIR = os.path.join(APP_DIR, "ffmpeg_bin")
+    FFMPEG_EXE = os.path.join(FFMPEG_DIR, "ffmpeg.exe")
+
+elif sys.platform.startswith("linux"):
+    plat = "linux"
+    FFMPEG_EXE = shutil.which("ffmpeg")
+
 else:
     plat = "other"
-
-def app_path():
-    if getattr(sys, "frozen", False):
-        return sys._MEIPASS
-    return os.path.dirname(os.path.abspath(__file__))
-
-APP_DIR = app_path()
-FFMPEG_DIR = os.path.join(APP_DIR, "ffmpeg_bin")
-
-FFMPEG_EXE = os.path.join(FFMPEG_DIR, "ffmpeg.exe")
-
+    FFMPEG_EXE = None
 def ffmpeg_exists():
-    return os.path.isfile(FFMPEG_EXE)
+    return FFMPEG_EXE is not None and os.path.isfile(FFMPEG_EXE)
 
 def get_downloads_folder():
     try:
@@ -88,6 +85,7 @@ def update_quality_lock(event=None):
         quality_box.config(state="readonly")
 
 def download_worker():
+
     if not ffmpeg_exists():
         set_status("ffmpeg missing")
         print("ffmpeg missing")
@@ -104,12 +102,15 @@ def download_worker():
     set_progress(0)
 
     try:
+        print("FFmpeg path:", FFMPEG_EXE)
+        print("FFmpeg exists:", ffmpeg_exists())
+
         common_opts = {
-            "outtmpl": os.path.join(output, "%(title)s.%(ext)s"),
-            "ffmpeg_location": FFMPEG_EXE,
-            "progress_hooks": [progress_hook],
-            "quiet": False,
-            "no_color": True,
+               "outtmpl": os.path.join(output, "%(title)s.%(ext)s"),
+               "ffmpeg_location": FFMPEG_EXE,
+               "progress_hooks": [progress_hook],
+               "quiet": False,
+               "no_color": True,
         }
 
         if container == "mp3":
@@ -131,6 +132,9 @@ def download_worker():
                 "format": get_video_format(quality_box.get(), container),
                 "merge_output_format": container,
             }
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            print("FFmpeg path:", FFMPEG_EXE)
+            print("FFmpeg exists:", ffmpeg_exists())
 
         with yt_dlp.YoutubeDL(opts) as ydl:
             ydl.download([url])
